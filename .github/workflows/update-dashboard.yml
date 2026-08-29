@@ -1,0 +1,39 @@
+name: Update regime dashboard indicators
+
+on:
+  schedule:
+    # 매일 06:00 UTC (한국시간 15:00) 자동 실행
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Fetch latest indicators from FRED and update dashboard
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python3 scripts/update_indicators.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "regime-dashboard-bot"
+          git config user.email "actions@github.com"
+          if git diff --quiet -- regime-dashboard.html; then
+            echo "변경 사항 없음, 커밋 생략"
+          else
+            git add regime-dashboard.html
+            git commit -m "chore: 지표 자동 갱신 ($(date -u +%Y-%m-%d))"
+            git push origin HEAD:main
+          fi
