@@ -1320,7 +1320,7 @@ const config = {
 
     // 차트 영역 여백: 왼쪽은 Y축 수치, 아래는 X축 연월 라벨용
     const W = 560, H = 118;
-    const M = { top: 8, right: 6, bottom: 18, left: 40 };
+    const M = { top: 8, right: 6, bottom: 18, left: 46 };
     const plotW = W - M.left - M.right;
     const plotH = H - M.top - M.bottom;
 
@@ -1344,7 +1344,7 @@ const config = {
       const grid = i === 1
         ? `<line x1="${M.left}" y1="${y.toFixed(1)}" x2="${W - M.right}" y2="${y.toFixed(1)}" stroke="#e6e8ef" stroke-width="1" stroke-dasharray="2,3"></line>`
         : '';
-      return `${grid}<text x="${M.left - 5}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="8.5" fill="#9aa1b3" font-weight="600">${fmtNum(v)}${ind.unit}</text>`;
+      return `${grid}<text x="${M.left - 5}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="#5a6478" font-weight="700">${fmtNum(v)}${ind.unit}</text>`;
     }).join('');
 
     // X축: 균등 추출한 연월 눈금 + 눈금선
@@ -1354,7 +1354,7 @@ const config = {
       const x = idxToX(i);
       return `
         <line x1="${x.toFixed(1)}" y1="${(M.top + plotH).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(M.top + plotH + 3).toFixed(1)}" stroke="#c7cad4" stroke-width="1"></line>
-        <text x="${x.toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="8.5" fill="#9aa1b3" font-weight="600">${formatYM(points[i].d)}</text>
+        <text x="${x.toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="9" fill="#6b7280" font-weight="600">${formatYM(points[i].d)}</text>
       `;
     }).join('');
 
