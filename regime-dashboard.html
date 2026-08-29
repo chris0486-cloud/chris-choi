@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>국면 판단 대시보드</title>
+<style>
+  @font-face {
+    font-family: 'Pretendard';
+    src: local('Pretendard');
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 1280px;
+    height: 720px;
+    background: #ffffff;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, '맑은 고딕', 'Malgun Gothic', sans-serif;
+    color: #1B2A4A;
+    overflow: hidden;
+  }
+
+  #stage {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    background: #ffffff;
+  }
+
+  /* ---------- watermark ---------- */
+  #watermark {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  #watermark .wm-row {
+    display: flex;
+    white-space: nowrap;
+    transform: rotate(-28deg);
+    position: absolute;
+    left: -20%;
+  }
+  #watermark .wm-item {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1B2A4A;
+    opacity: 0.05;
+    margin-right: 60px;
+    letter-spacing: 1px;
+  }
+
+  /* ---------- shell ---------- */
+  #content {
+    position: relative;
+    z-index: 1;
+    width: 1280px;
+    height: 720px;
+    padding: 26px 44px 20px 44px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    margin-bottom: 14px;
+  }
+  header h1 {
+    font-size: 25px;
+    font-weight: 800;
+    color: #1B2A4A;
+    letter-spacing: -0.3px;
+  }
+  header p {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #7a8296;
+    line-height: 1.5;
+    max-width: 920px;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 34px;
+    min-height: 0;
+  }
+
+  /* ---------- left panel : quadrant ---------- */
+  #left-panel {
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #quad-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1B2A4A;
+    margin-bottom: 8px;
+  }
+
+  #quad-wrap {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    grid-template-rows: 1fr 22px;
+    min-height: 0;
+  }
+
+  #y-axis-label {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .axis-label-v {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4a5468;
+    line-height: 1.1;
+  }
+
+  #quad-box {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    border: 1px solid #d8dbe4;
+    border-radius: 6px;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .quad-cell {
+    position: relative;
+    padding: 12px 14px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.35;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+  .quad-navy { background: #1B2A4A; }
+  .quad-terracotta { background: #B5673D; }
+
+  #quad-box::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    border-top: 1px solid rgba(255,255,255,0.25);
+    z-index: 2;
+    pointer-events: none;
+  }
+  #quad-box::after {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    border-left: 1px solid rgba(255,255,255,0.25);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  #x-axis-row {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4a5468;
+  }
+  #x-axis-row .axis-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1B2A4A;
+  }
+
+  /* marker + arrow */
+  #marker-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+  #marker-dot {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #1B2A4A;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 2px 6px rgba(0,0,0,0.35);
+    transform: translate(-50%, -50%);
+  }
+  #marker-caption {
+    position: absolute;
+    transform: translate(-50%, 0);
+    text-align: center;
+    width: 220px;
+  }
+  #marker-caption .cap-date {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #ffffff;
+    background: rgba(0,0,0,0.32);
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 3px;
+  }
+  #marker-caption .cap-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+    line-height: 1.35;
+  }
+
+  /* ---------- right panel : gauges ---------- */
+  #right-panel {
+    width: 55%;
+    display: flex;
+    flex-direction: column;
+  }
+  #gauge-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1B2A4A;
+    margin-bottom: 8px;
+  }
+  #gauge-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .gauge-row {
+    display: grid;
+    grid-template-columns: 108px 1fr;
+    align-items: center;
+    column-gap: 12px;
+  }
+  .gauge-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1B2A4A;
+    line-height: 1.3;
+  }
+
+  .gauge-track-wrap {
+    position: relative;
+    padding-top: 16px;
+    padding-bottom: 15px;
+  }
+  .gauge-minmax {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    color: #9aa1b3;
+    font-weight: 600;
+  }
+  .gauge-track {
+    position: relative;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .zone-safe { background: #2CB1BC; }
+  .zone-warn { background: #F2994A; }
+  .zone-danger { background: #A9673F; }
+
+  .gauge-marker {
+    position: absolute;
+    top: -4px;
+    width: 5px;
+    height: 20px;
+    background: #1B2A4A;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+  .gauge-value {
+    position: absolute;
+    transform: translateX(-50%);
+    font-size: 12px;
+    font-weight: 800;
+    color: #1B2A4A;
+    white-space: nowrap;
+  }
+  .gauge-value.top { top: -17px; }
+  .gauge-value.bottom { bottom: -16px; }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 14px;
+  }
+
+  #legend-row {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a5468;
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .legend-swatch.marker {
+    width: 5px;
+    height: 14px;
+    border-radius: 2px;
+    background: #1B2A4A;
+  }
+
+  #verdict-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #FBF3EC;
+    border: 1px solid #EED9C4;
+    border-radius: 8px;
+    padding: 8px 14px;
+  }
+  #verdict-tag {
+    font-size: 11px;
+    font-weight: 800;
+    color: #B5673D;
+    background: #ffffff;
+    border: 1px solid #EED9C4;
+    border-radius: 5px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+  #verdict-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1B2A4A;
+    line-height: 1.4;
+  }
+
+  #bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  #source-text {
+    font-size: 9.5px;
+    color: #a3a9b8;
+    line-height: 1.4;
+    max-width: 820px;
+  }
+  #org-text {
+    font-size: 10.5px;
+    color: #7a8296;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  #page-text {
+    font-size: 10.5px;
+    color: #a3a9b8;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================================================= -->
+<!-- CONFIG: 매달 이 객체의 값만 갱신하면 대시보드가 재계산됩니다 -->
+<!-- ======================================================= -->
+<script>
+const config = {
+  meta: {
+    title: "국면 판단 대시보드: 한눈에 보는 현재 위치",
+    subtitle: "성장·물가 국면 매트릭스와 7개 핵심 지표의 위험 구간을 통해 현재 매크로 사이클 위치를 진단합니다.",
+    asOf: "2026.8 기준",
+    org: "Macro Strategy Team",
+    page: "1 / 1",
+    source: "출처: Trading Economics, BLS, S&P Global, FRED, Cboe, ICE · 2026.8 기준 · 구간 경계는 내부 운용 기준(안)"
+  },
+
+  quadrant: {
+    // 0~100 정규화 좌표계 (x: 물가 좌0→우100, y: 성장 아래0→위100)
+    current: { x: 58, y: 35 },
+    arrowTo: { x: 34, y: 60 },
+    caption: "현재(2026.8) 물가 정점 통과 → 봄·인컴 국면으로 이동 중"
+  },
+
+  indicators: [
+    { label: "美 제조업 PMI",        min: 40,  max: 65,  value: 53.2, unit: "",   direction: "asc",  zoneBoundaries: [47, 50] },
+    { label: "10Y-2Y 금리차",        min: -1.5,max: 2.0, value: 0.47, unit: "%p", direction: "asc",  zoneBoundaries: [0, 0.5] },
+    { label: "美 CPI 전년비",        min: 0,   max: 8,   value: 3.4,  unit: "%",  direction: "desc", zoneBoundaries: [3, 5] },
+    { label: "美 10년 국채금리",     min: 2,   max: 7,   value: 4.65, unit: "%",  direction: "desc", zoneBoundaries: [4.0, 5.5] },
+    { label: "하이일드 스프레드",     min: 2,   max: 10,  value: 2.7,  unit: "%p", direction: "desc", zoneBoundaries: [4, 6] },
+    { label: "VIX",                  min: 10,  max: 60,  value: 15.9, unit: "",   direction: "desc", zoneBoundaries: [20, 30] },
+    { label: "달러인덱스 DXY",       min: 90,  max: 115, value: 99,   unit: "",   direction: "desc", zoneBoundaries: [103, 108] }
+  ],
+
+  verdict: "위험지표 3종 안정, 물가·금리는 경계 구간 → 국면 1→2 전환 초입. 방어자산 유지 + 인컴 확대 준비"
+};
+</script>
+
+<div id="stage">
+  <div id="watermark"></div>
+
+  <div id="content">
+    <header>
+      <h1 id="hdr-title"></h1>
+      <p id="hdr-subtitle"></p>
+    </header>
+
+    <main>
+      <section id="left-panel">
+        <div id="quad-title">성장·물가 국면 매트릭스</div>
+        <div id="quad-wrap">
+          <div id="y-axis-label">
+            <div class="axis-label-v"><span>성</span><span>장</span><span>↑</span></div>
+            <div class="axis-label-v"><span>성</span><span>장</span><span>↓</span></div>
+          </div>
+          <div id="quad-box">
+            <div class="quad-cell quad-navy">봄 / 골디락스</div>
+            <div class="quad-cell quad-terracotta">여름 / 과열·인플레</div>
+            <div class="quad-cell quad-navy">겨울 / 디플레 침체</div>
+            <div class="quad-cell quad-terracotta">가을 / 스태그플레이션</div>
+            <svg id="arrow-svg" style="position:absolute; inset:0; width:100%; height:100%; z-index:4; pointer-events:none;">
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#ffffff" />
+                </marker>
+              </defs>
+              <line id="arrow-line" x1="0" y1="0" x2="0" y2="0" stroke="#ffffff" stroke-width="2.5" marker-end="url(#arrowhead)" stroke-dasharray="1,5" stroke-linecap="round"/>
+            </svg>
+            <div id="marker-layer">
+              <div id="marker-dot"></div>
+              <div id="marker-caption">
+                <div class="cap-date" id="marker-date"></div>
+                <div class="cap-text" id="marker-text"></div>
+              </div>
+            </div>
+          </div>
+          <div id="x-axis-row">
+            <span>← 하락</span>
+            <span class="axis-name">물가</span>
+            <span>상승 →</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="right-panel">
+        <div id="gauge-title">핵심 지표 게이지 (7종)</div>
+        <div id="gauge-list"></div>
+      </section>
+    </main>
+
+    <footer>
+      <div id="legend-row">
+        <div class="legend-item"><span class="legend-swatch" style="background:#2CB1BC;"></span>안정 / 우호</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F2994A;"></span>경계 / 전환구간</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#A9673F;"></span>위험 / 위기</div>
+        <div class="legend-item"><span class="legend-swatch marker"></span>현재값</div>
+        <div id="verdict-box">
+          <span id="verdict-tag">판정</span>
+          <span id="verdict-text"></span>
+        </div>
+      </div>
+      <div id="bottom-row">
+        <div>
+          <div id="source-text"></div>
+          <div id="org-text"></div>
+        </div>
+        <div id="page-text"></div>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+(function render(cfg) {
+
+  /* ---------- header / footer text ---------- */
+  document.getElementById('hdr-title').textContent = cfg.meta.title;
+  document.getElementById('hdr-subtitle').textContent = cfg.meta.subtitle;
+  document.getElementById('source-text').textContent = cfg.meta.source;
+  document.getElementById('org-text').textContent = cfg.meta.org;
+  document.getElementById('page-text').textContent = cfg.meta.page;
+  document.getElementById('verdict-text').textContent = cfg.verdict;
+
+  /* ---------- watermark tiling ---------- */
+  (function buildWatermark() {
+    const wm = document.getElementById('watermark');
+    const text = cfg.meta.org + '  ·  ' + cfg.meta.asOf + '   ';
+    const rows = 14;
+    const itemsPerRow = 10;
+    for (let r = 0; r < rows; r++) {
+      const row = document.createElement('div');
+      row.className = 'wm-row';
+      row.style.top = (r * 90 - 200) + 'px';
+      for (let i = 0; i < itemsPerRow; i++) {
+        const span = document.createElement('span');
+        span.className = 'wm-item';
+        span.textContent = text;
+        row.appendChild(span);
+      }
+      wm.appendChild(row);
+    }
+  })();
+
+  /* ---------- quadrant marker + arrow ---------- */
+  (function buildQuadrant() {
+    const q = cfg.quadrant;
+    const dot = document.getElementById('marker-dot');
+    const cap = document.getElementById('marker-caption');
+    const dateEl = document.getElementById('marker-date');
+    const textEl = document.getElementById('marker-text');
+    const line = document.getElementById('arrow-line');
+
+    // x: 0~100 -> left 0%~100% ; y: 0~100 -> top 100%~0% (성장 위쪽이 y=100)
+    const curLeft = q.current.x;
+    const curTop = 100 - q.current.y;
+    const toLeft = q.arrowTo.x;
+    const toTop = 100 - q.arrowTo.y;
+
+    dot.style.left = curLeft + '%';
+    dot.style.top = curTop + '%';
+
+    // caption placed below marker, clamped so it doesn't run off box
+    cap.style.left = Math.min(85, Math.max(15, curLeft)) + '%';
+    cap.style.top = 'calc(' + curTop + '% + 14px)';
+
+    const dateMatch = q.caption.match(/현재\(([^)]+)\)/);
+    dateEl.textContent = dateMatch ? '현재(' + dateMatch[1] + ')' : '현재';
+    textEl.textContent = q.caption.replace(/^현재\([^)]+\)\s*/, '');
+
+    line.setAttribute('x1', curLeft + '%');
+    line.setAttribute('y1', curTop + '%');
+    line.setAttribute('x2', toLeft + '%');
+    line.setAttribute('y2', toTop + '%');
+  })();
+
+  /* ---------- gauges ---------- */
+  (function buildGauges() {
+    const list = document.getElementById('gauge-list');
+    cfg.indicators.forEach(ind => {
+      const range = ind.max - ind.min;
+      const pct = v => ((v - ind.min) / range) * 100;
+
+      const [b1, b2] = ind.zoneBoundaries;
+      const p1 = pct(b1);
+      const p2 = pct(b2);
+
+      let zones;
+      if (ind.direction === 'asc') {
+        zones = [
+          { cls: 'zone-danger', width: p1 },
+          { cls: 'zone-warn',   width: p2 - p1 },
+          { cls: 'zone-safe',   width: 100 - p2 }
+        ];
+      } else {
+        zones = [
+          { cls: 'zone-safe',   width: p1 },
+          { cls: 'zone-warn',   width: p2 - p1 },
+          { cls: 'zone-danger', width: 100 - p2 }
+        ];
+      }
+
+      const valuePct = Math.min(100, Math.max(0, pct(ind.value)));
+      const valueSide = valuePct > 82 ? 'bottom' : 'top';
+
+      const row = document.createElement('div');
+      row.className = 'gauge-row';
+      row.innerHTML = `
+        <div class="gauge-label">${ind.label}</div>
+        <div class="gauge-track-wrap">
+          <div class="gauge-minmax">
+            <span>${ind.min}${ind.unit}</span>
+            <span>${ind.max}${ind.unit}</span>
+          </div>
+          <div class="gauge-track">
+            ${zones.map(z => `<div class="${z.cls}" style="width:${z.width}%;"></div>`).join('')}
+          </div>
+          <div class="gauge-marker" style="left:${valuePct}%;"></div>
+          <div class="gauge-value ${valueSide}" style="left:${valuePct}%;">${ind.value}${ind.unit}</div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  })();
+
+})(config);
+</script>
+
+</body>
+</html>
