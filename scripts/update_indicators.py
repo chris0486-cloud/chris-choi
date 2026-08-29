@@ -1,6 +1,7 @@
 """
-FRED(연준 경제데이터)에서 최신 지표를 가져와 regime-dashboard.html의
-config.indicators 값을 자동으로 갱신한다.
+FRED(연준 경제데이터)에서 최신 값 + 최근 10년 월별 이력을 가져와
+regime-dashboard.html의 config.indicators[label] 항목(value/asOf/history)을
+통째로 갱신한다.
 
 자동 갱신 대상 (5개, FRED에 정확히 대응하는 시리즈가 있는 지표만):
   - 10Y-2Y 금리차   : T10Y2Y
@@ -9,7 +10,7 @@ config.indicators 값을 자동으로 갱신한다.
   - 하이일드 스프레드 : BAMLH0A0HYM2
   - VIX             : VIXCLS
 
-자동 갱신 제외 (수동 유지):
+자동 갱신 제외 (수동 유지 — value/asOf/history 모두 사람이 직접 채워야 함):
   - 美 제조업 PMI (ISM, 무료 공개 API 없음)
   - 달러인덱스 DXY (ICE DXY와 스케일이 같은 무료 시리즈 없음)
 """
@@ -19,10 +20,11 @@ import os
 import re
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 FRED_API_KEY = os.environ.get("FRED_API_KEY")
 HTML_PATH = os.path.join(os.path.dirname(__file__), "..", "regime-dashboard.html")
+HISTORY_YEARS = 10
 
 SERIES = {
     "10Y-2Y 금리차": {"series_id": "T10Y2Y", "units": None},
@@ -33,20 +35,78 @@ SERIES = {
 }
 
 
-def fetch_latest(series_id, units=None):
+def fred_url(series_id, units=None, **params):
     url = (
         "https://api.stlouisfed.org/fred/series/observations"
         f"?series_id={series_id}&api_key={FRED_API_KEY}&file_type=json"
-        "&sort_order=desc&limit=10"
     )
     if units:
         url += f"&units={units}"
-    with urllib.request.urlopen(url, timeout=20) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    for k, v in params.items():
+        url += f"&{k}={v}"
+    return url
+
+
+def fetch_json(url):
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_latest(series_id, units=None):
+    data = fetch_json(fred_url(series_id, units, sort_order="desc", limit=10))
     for obs in data.get("observations", []):
         if obs["value"] not in (".", "", None):
             return float(obs["value"]), obs["date"]
     raise RuntimeError(f"{series_id}: 유효한 최신 값이 없습니다")
+
+
+def fetch_history(series_id, units=None, years=HISTORY_YEARS):
+    """최근 N년치를 월말(end-of-period) 기준 월별로 리샘플링해서 가져온다."""
+    start = (date.today() - timedelta(days=365 * years + 31)).isoformat()
+    data = fetch_json(
+        fred_url(
+            series_id,
+            units,
+            observation_start=start,
+            frequency="m",
+            aggregation_method="eop",
+            sort_order="asc",
+            limit=300,
+        )
+    )
+    points = []
+    for obs in data.get("observations", []):
+        if obs["value"] in (".", "", None):
+            continue
+        points.append((obs["date"][:7], round(float(obs["value"]), 2)))
+    return points
+
+
+def find_indicator_block(html, label):
+    """indicators 배열 안에서 해당 label을 가진 객체 { ... } 의 [start, end) 범위를 찾는다.
+    중괄호 깊이를 세어 매칭하므로 history 안의 중첩 객체({ d, v })가 있어도 안전하다.
+    """
+    key = f'label: "{label}"'
+    idx = html.index(key)
+    start = html.rfind("{", 0, idx)
+    depth = 0
+    i = start
+    while i < len(html):
+        if html[i] == "{":
+            depth += 1
+        elif html[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return start, i + 1
+        i += 1
+    raise RuntimeError(f"{label}: 블록의 닫는 괄호를 찾지 못했습니다")
+
+
+def format_history(points):
+    if not points:
+        return "history: []"
+    lines = ",\n".join(f'      {{ d: "{d}", v: {v} }}' for d, v in points)
+    return "history: [\n" + lines + "\n    ]"
 
 
 def main():
@@ -60,27 +120,34 @@ def main():
     updated = []
     for label, cfg in SERIES.items():
         try:
-            value, date = fetch_latest(cfg["series_id"], cfg["units"])
+            value, vdate = fetch_latest(cfg["series_id"], cfg["units"])
+            history = fetch_history(cfg["series_id"], cfg["units"])
         except Exception as e:
-            print(f"[경고] {label} 갱신 실패: {e}", file=sys.stderr)
+            print(f"[경고] {label} 데이터 조회 실패: {e}", file=sys.stderr)
             continue
 
-        rounded = round(value, 2)
-        # value와 그 뒤에 이어지는 asOf: "YYYY-MM-DD" 를 함께 갱신한다
-        # (asOf는 FRED가 실제로 응답한 관측일 — "오늘" 이 아니라 그 지표의 기준일)
-        pattern = re.compile(
-            r'(label:\s*"' + re.escape(label) + r'".*?value:\s*)[-\d.]+'
-            r'(,\s*asOf:\s*")[^"]*(")'
-        )
-        new_html, n = pattern.subn(
-            lambda m: m.group(1) + str(rounded) + m.group(2) + date + m.group(3),
-            html,
-        )
-        if n == 0:
-            print(f"[경고] {label} 패턴을 찾지 못했습니다", file=sys.stderr)
+        try:
+            start, end = find_indicator_block(html, label)
+        except Exception as e:
+            print(f"[경고] {label}: {e}", file=sys.stderr)
             continue
-        html = new_html
-        updated.append(f"{label} → {rounded} (FRED {date} 기준)")
+
+        block = html[start:end]
+        rounded = round(value, 2)
+        block, n1 = re.subn(r"value:\s*[-\d.]+", f"value: {rounded}", block, count=1)
+        block, n2 = re.subn(r'asOf:\s*"[^"]*"', f'asOf: "{vdate}"', block, count=1)
+        block, n3 = re.subn(
+            r"history:\s*\[[\s\S]*?\]", format_history(history), block, count=1
+        )
+        if not (n1 and n2 and n3):
+            print(
+                f"[경고] {label}: 필드 치환 실패 (value={n1}, asOf={n2}, history={n3})",
+                file=sys.stderr,
+            )
+            continue
+
+        html = html[:start] + block + html[end:]
+        updated.append(f"{label} → {rounded} (FRED {vdate} 기준, 이력 {len(history)}개월)")
 
     # 기준 시점(meta.asOf/source/캡션 날짜) 갱신
     # 주의: indicators[].asOf 도 같은 키 이름을 쓰지만 "YYYY-MM-DD" 형식(날짜만)이고

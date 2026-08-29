@@ -11,20 +11,24 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body {
+  html {
+    background: #eef0f4;
+  }
+  body {
     width: 1280px;
-    height: 720px;
+    margin: 0 auto;
     background: #ffffff;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, '맑은 고딕', 'Malgun Gothic', sans-serif;
     color: #1B2A4A;
-    overflow: hidden;
   }
 
+  /* ---------- slide (16:9, 1280x720 고정 — PPT 캡처용) ---------- */
   #stage {
     position: relative;
     width: 1280px;
     height: 720px;
     background: #ffffff;
+    overflow: hidden;
   }
 
   /* ---------- watermark ---------- */
@@ -317,7 +321,7 @@
   .gauge-value.top { top: -17px; }
   .gauge-value.bottom { bottom: -16px; }
 
-  /* ---------- footer ---------- */
+  /* ---------- footer (슬라이드 내부) ---------- */
   footer {
     margin-top: 14px;
   }
@@ -398,13 +402,81 @@
     color: #a3a9b8;
     font-weight: 600;
   }
+
+  /* ---------- 지표 추이 (슬라이드 아래, 스크롤 영역) ---------- */
+  #trends {
+    width: 1280px;
+    background: #ffffff;
+    padding: 10px 44px 44px;
+    border-top: 1px solid #eceef3;
+  }
+  .trend-section-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1B2A4A;
+    margin: 26px 0 12px;
+  }
+  .trend-section-title:first-child {
+    margin-top: 22px;
+  }
+  .trend-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+  }
+  .trend-card {
+    border: 1px solid #e6e8ef;
+    border-radius: 8px;
+    padding: 10px 14px 8px;
+  }
+  .trend-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .trend-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1B2A4A;
+  }
+  .trend-svg {
+    width: 100%;
+    height: 90px;
+    display: block;
+  }
+  .trend-range {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #9aa1b3;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .trend-empty {
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #b8bcc8;
+    background: #fafbfc;
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
 
 <!-- ======================================================= -->
-<!-- CONFIG: 매달 이 객체의 값만 갱신하면 대시보드가 재계산됩니다 -->
-<!-- indicators[].asOf 는 "YYYY-MM-DD" 형식 (해당 지표의 실제 발표/관측 기준일) -->
+<!-- CONFIG: 매달 이 객체의 값만 갱신하면 대시보드가 재계산됩니다     -->
+<!--                                                           -->
+<!-- indicators[].asOf    : "YYYY-MM-DD" (해당 지표의 실제 발표/관측 기준일) -->
+<!-- indicators[].history : 과거 추이 그래프용 월별 시계열              -->
+<!--   [{ d: "YYYY-MM", v: 수치 }, ...] 를 과거 → 최신 순으로 나열       -->
+<!--   美 제조업 PMI · 달러인덱스 DXY 는 무료 공개 API가 없어 자동 갱신되지 -->
+<!--   않습니다 — 필요하면 이 배열에 직접 값을 채워 넣어주세요.           -->
 <!-- ======================================================= -->
 <script>
 const config = {
@@ -425,13 +497,48 @@ const config = {
   },
 
   indicators: [
-    { label: "美 제조업 PMI",        min: 40,  max: 65,  value: 53.2, asOf: "2026-08-01", unit: "",   direction: "asc",  zoneBoundaries: [47, 50] },
-    { label: "10Y-2Y 금리차",        min: -1.5,max: 2.0, value: 0.39, asOf: "2026-08-28", unit: "%p", direction: "asc",  zoneBoundaries: [0, 0.5] },
-    { label: "美 CPI 전년비",        min: 0,   max: 8,   value: 3.3,  asOf: "2026-07-01", unit: "%",  direction: "desc", zoneBoundaries: [3, 5] },
-    { label: "美 10년 국채금리",     min: 2,   max: 7,   value: 4.67, asOf: "2026-08-28", unit: "%",  direction: "desc", zoneBoundaries: [4.0, 5.5] },
-    { label: "하이일드 스프레드",     min: 2,   max: 10,  value: 2.63, asOf: "2026-08-28", unit: "%p", direction: "desc", zoneBoundaries: [4, 6] },
-    { label: "VIX",                  min: 10,  max: 60,  value: 14.51, asOf: "2026-08-28", unit: "",   direction: "desc", zoneBoundaries: [20, 30] },
-    { label: "달러인덱스 DXY",       min: 90,  max: 115, value: 99,   asOf: "2026-08-01", unit: "",   direction: "desc", zoneBoundaries: [103, 108] }
+    {
+      label: "美 제조업 PMI",
+      min: 40, max: 65, value: 53.2, asOf: "2026-08-01", unit: "", direction: "asc",
+      zoneBoundaries: [47, 50],
+      history: []
+    },
+    {
+      label: "10Y-2Y 금리차",
+      min: -1.5, max: 2.0, value: 0.39, asOf: "2026-08-28", unit: "%p", direction: "asc",
+      zoneBoundaries: [0, 0.5],
+      history: []
+    },
+    {
+      label: "美 CPI 전년비",
+      min: 0, max: 8, value: 3.3, asOf: "2026-07-01", unit: "%", direction: "desc",
+      zoneBoundaries: [3, 5],
+      history: []
+    },
+    {
+      label: "美 10년 국채금리",
+      min: 2, max: 7, value: 4.67, asOf: "2026-08-27", unit: "%", direction: "desc",
+      zoneBoundaries: [4.0, 5.5],
+      history: []
+    },
+    {
+      label: "하이일드 스프레드",
+      min: 2, max: 10, value: 2.63, asOf: "2026-08-27", unit: "%p", direction: "desc",
+      zoneBoundaries: [4, 6],
+      history: []
+    },
+    {
+      label: "VIX",
+      min: 10, max: 60, value: 14.51, asOf: "2026-08-27", unit: "", direction: "desc",
+      zoneBoundaries: [20, 30],
+      history: []
+    },
+    {
+      label: "달러인덱스 DXY",
+      min: 90, max: 115, value: 99, asOf: "2026-08-01", unit: "", direction: "desc",
+      zoneBoundaries: [103, 108],
+      history: []
+    }
   ],
 
   verdict: "위험지표 3종 안정, 물가·금리는 경계 구간 → 국면 1→2 전환 초입. 방어자산 유지 + 인컴 확대 준비"
@@ -512,6 +619,14 @@ const config = {
   </div>
 </div>
 
+<div id="trends">
+  <div class="trend-section-title">최근 10년 추이</div>
+  <div class="trend-grid" id="trend-grid-10y"></div>
+
+  <div class="trend-section-title">최근 5년 추이</div>
+  <div class="trend-grid" id="trend-grid-5y"></div>
+</div>
+
 <script>
 (function render(cfg) {
 
@@ -528,6 +643,36 @@ const config = {
     const [y, m, d] = isoDate.split('-');
     return `${y}.${Number(m)}.${Number(d)} 기준`;
   }
+
+  function formatYM(ym) {
+    const [y, m] = ym.split('-');
+    return `${y}.${Number(m)}`;
+  }
+
+  // 지표의 min~max 범위를 0~100 스케일로 두고, direction/zoneBoundaries에 따라
+  // 안정(zone-safe)/경계(zone-warn)/위험(zone-danger) 3구간의 [from,to] 구간을 계산한다.
+  // (게이지 바와 추이 그래프 배경 밴드가 동일한 로직을 공유한다)
+  function computeZones(ind) {
+    const range = ind.max - ind.min;
+    const pct = v => ((v - ind.min) / range) * 100;
+    const [b1, b2] = ind.zoneBoundaries;
+    const p1 = pct(b1);
+    const p2 = pct(b2);
+    if (ind.direction === 'asc') {
+      return [
+        { cls: 'zone-danger', from: 0,  to: p1 },
+        { cls: 'zone-warn',   from: p1, to: p2 },
+        { cls: 'zone-safe',   from: p2, to: 100 }
+      ];
+    }
+    return [
+      { cls: 'zone-safe',   from: 0,  to: p1 },
+      { cls: 'zone-warn',   from: p1, to: p2 },
+      { cls: 'zone-danger', from: p2, to: 100 }
+    ];
+  }
+
+  const ZONE_COLOR = { 'zone-safe': '#2CB1BC', 'zone-warn': '#F2994A', 'zone-danger': '#A9673F' };
 
   /* ---------- watermark tiling ---------- */
   (function buildWatermark() {
@@ -585,28 +730,9 @@ const config = {
   (function buildGauges() {
     const list = document.getElementById('gauge-list');
     cfg.indicators.forEach(ind => {
+      const zones = computeZones(ind).map(z => ({ cls: z.cls, width: z.to - z.from }));
       const range = ind.max - ind.min;
       const pct = v => ((v - ind.min) / range) * 100;
-
-      const [b1, b2] = ind.zoneBoundaries;
-      const p1 = pct(b1);
-      const p2 = pct(b2);
-
-      let zones;
-      if (ind.direction === 'asc') {
-        zones = [
-          { cls: 'zone-danger', width: p1 },
-          { cls: 'zone-warn',   width: p2 - p1 },
-          { cls: 'zone-safe',   width: 100 - p2 }
-        ];
-      } else {
-        zones = [
-          { cls: 'zone-safe',   width: p1 },
-          { cls: 'zone-warn',   width: p2 - p1 },
-          { cls: 'zone-danger', width: 100 - p2 }
-        ];
-      }
-
       const valuePct = Math.min(100, Math.max(0, pct(ind.value)));
       const valueSide = valuePct > 82 ? 'bottom' : 'top';
 
@@ -627,6 +753,71 @@ const config = {
         </div>
       `;
       list.appendChild(row);
+    });
+  })();
+
+  /* ---------- 추이 그래프 (최근 N년) ---------- */
+  function buildTrendSvg(ind, years) {
+    const hist = ind.history || [];
+    if (hist.length < 2) {
+      return `<div class="trend-empty">history 데이터가 없습니다.<br>config에 채워 넣으면 최근 ${years}년 추이가 표시됩니다.</div>`;
+    }
+
+    const lastDate = new Date(hist[hist.length - 1].d + '-01T00:00:00');
+    const cutoff = new Date(lastDate);
+    cutoff.setFullYear(cutoff.getFullYear() - years);
+    const points = hist.filter(p => new Date(p.d + '-01T00:00:00') >= cutoff);
+
+    if (points.length < 2) {
+      return `<div class="trend-empty">최근 ${years}년 구간에 데이터가 부족합니다 (2개 이상 필요).</div>`;
+    }
+
+    const W = 560, H = 90;
+    const range = ind.max - ind.min;
+    const valToY = v => {
+      const clamped = Math.min(ind.max, Math.max(ind.min, v));
+      return H - ((clamped - ind.min) / range) * H;
+    };
+
+    const bands = computeZones(ind).map(z => {
+      const y = H - (z.to / 100) * H;
+      const h = ((z.to - z.from) / 100) * H;
+      return `<rect x="0" y="${y.toFixed(1)}" width="${W}" height="${h.toFixed(1)}" fill="${ZONE_COLOR[z.cls]}" opacity="0.13"></rect>`;
+    }).join('');
+
+    const stepX = W / (points.length - 1);
+    const coords = points.map((p, i) => [i * stepX, valToY(p.v)]);
+    const path = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c[0].toFixed(1) + ',' + c[1].toFixed(1)).join(' ');
+    const last = coords[coords.length - 1];
+
+    const svg = `
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="trend-svg">
+        ${bands}
+        <path d="${path}" fill="none" stroke="#1B2A4A" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+        <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.6" fill="#1B2A4A"></circle>
+      </svg>
+      <div class="trend-range">
+        <span>${formatYM(points[0].d)}</span>
+        <span>${formatYM(points[points.length - 1].d)} · ${points[points.length - 1].v}${ind.unit}</span>
+      </div>
+    `;
+    return svg;
+  }
+
+  (function buildTrends() {
+    const grids = { 10: document.getElementById('trend-grid-10y'), 5: document.getElementById('trend-grid-5y') };
+    [10, 5].forEach(years => {
+      cfg.indicators.forEach(ind => {
+        const card = document.createElement('div');
+        card.className = 'trend-card';
+        card.innerHTML = `
+          <div class="trend-card-head">
+            <span class="trend-card-title">${ind.label}</span>
+          </div>
+          ${buildTrendSvg(ind, years)}
+        `;
+        grids[years].appendChild(card);
+      });
     });
   })();
 
