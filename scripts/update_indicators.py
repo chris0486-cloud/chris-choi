@@ -82,10 +82,13 @@ def main():
         html = new_html
         updated.append(f"{label} → {rounded} (FRED {date} 기준)")
 
-    # 기준 시점(asOf/source/캡션 날짜) 갱신
+    # 기준 시점(meta.asOf/source/캡션 날짜) 갱신
+    # 주의: indicators[].asOf 도 같은 키 이름을 쓰지만 "YYYY-MM-DD" 형식(날짜만)이고
+    # meta.asOf 는 항상 "...기준" 이 붙어 있으므로, "기준"이 포함된 값만 골라 교체해서
+    # 위에서 이미 넣어둔 지표별 날짜를 덮어쓰지 않도록 한다.
     now = datetime.now(timezone.utc)
     as_of_ym = f"{now.year}.{now.month}"
-    html = re.sub(r'asOf:\s*"[^"]*"', f'asOf: "{as_of_ym} 기준"', html)
+    html = re.sub(r'asOf:\s*"[^"]*기준"', f'asOf: "{as_of_ym} 기준"', html)
     # caption: "현재(YYYY.M) ..." 형태의 config 필드만 한정해서 날짜만 교체
     # (JS 코드 쪽 '현재(' + dateMatch[1] + ')' 같은 로직 문자열은 건드리지 않도록
     #  caption: 뒤 큰따옴표 문자열 안의 현재(...) 만 매칭한다)
