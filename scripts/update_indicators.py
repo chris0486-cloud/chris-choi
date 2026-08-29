@@ -66,20 +66,29 @@ def main():
             continue
 
         rounded = round(value, 2)
+        # value와 그 뒤에 이어지는 asOf: "YYYY-MM-DD" 를 함께 갱신한다
+        # (asOf는 FRED가 실제로 응답한 관측일 — "오늘" 이 아니라 그 지표의 기준일)
         pattern = re.compile(
             r'(label:\s*"' + re.escape(label) + r'".*?value:\s*)[-\d.]+'
+            r'(,\s*asOf:\s*")[^"]*(")'
         )
-        new_html, n = pattern.subn(lambda m: m.group(1) + str(rounded), html)
+        new_html, n = pattern.subn(
+            lambda m: m.group(1) + str(rounded) + m.group(2) + date + m.group(3),
+            html,
+        )
         if n == 0:
             print(f"[경고] {label} 패턴을 찾지 못했습니다", file=sys.stderr)
             continue
         html = new_html
         updated.append(f"{label} → {rounded} (FRED {date} 기준)")
 
-    # 기준 시점(asOf/source/캡션 날짜) 갱신
+    # 기준 시점(meta.asOf/source/캡션 날짜) 갱신
+    # 주의: indicators[].asOf 도 같은 키 이름을 쓰지만 "YYYY-MM-DD" 형식(날짜만)이고
+    # meta.asOf 는 항상 "...기준" 이 붙어 있으므로, "기준"이 포함된 값만 골라 교체해서
+    # 위에서 이미 넣어둔 지표별 날짜를 덮어쓰지 않도록 한다.
     now = datetime.now(timezone.utc)
     as_of_ym = f"{now.year}.{now.month}"
-    html = re.sub(r'asOf:\s*"[^"]*"', f'asOf: "{as_of_ym} 기준"', html)
+    html = re.sub(r'asOf:\s*"[^"]*기준"', f'asOf: "{as_of_ym} 기준"', html)
     # caption: "현재(YYYY.M) ..." 형태의 config 필드만 한정해서 날짜만 교체
     # (JS 코드 쪽 '현재(' + dateMatch[1] + ')' 같은 로직 문자열은 건드리지 않도록
     #  caption: 뒤 큰따옴표 문자열 안의 현재(...) 만 매칭한다)
