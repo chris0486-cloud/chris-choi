@@ -66,10 +66,16 @@ def main():
             continue
 
         rounded = round(value, 2)
+        # value와 그 뒤에 이어지는 asOf: "YYYY-MM-DD" 를 함께 갱신한다
+        # (asOf는 FRED가 실제로 응답한 관측일 — "오늘" 이 아니라 그 지표의 기준일)
         pattern = re.compile(
             r'(label:\s*"' + re.escape(label) + r'".*?value:\s*)[-\d.]+'
+            r'(,\s*asOf:\s*")[^"]*(")'
         )
-        new_html, n = pattern.subn(lambda m: m.group(1) + str(rounded), html)
+        new_html, n = pattern.subn(
+            lambda m: m.group(1) + str(rounded) + m.group(2) + date + m.group(3),
+            html,
+        )
         if n == 0:
             print(f"[경고] {label} 패턴을 찾지 못했습니다", file=sys.stderr)
             continue
