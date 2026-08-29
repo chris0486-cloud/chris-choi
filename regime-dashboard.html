@@ -447,14 +447,14 @@
   }
   .trend-svg {
     width: 100%;
-    height: 118px;
+    height: 200px;
     display: block;
   }
   .trend-svg text {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, '맑은 고딕', 'Malgun Gothic', sans-serif;
   }
   .trend-empty {
-    height: 118px;
+    height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1319,26 +1319,39 @@ const config = {
     }
 
     // 차트 영역 여백: 왼쪽은 Y축 수치, 아래는 X축 연월 라벨용
-    const W = 560, H = 118;
-    const M = { top: 8, right: 6, bottom: 18, left: 46 };
+    const W = 560, H = 200;
+    const M = { top: 12, right: 6, bottom: 22, left: 46 };
     const plotW = W - M.left - M.right;
     const plotH = H - M.top - M.bottom;
 
-    const range = ind.max - ind.min;
-    const valToY = v => {
-      const clamped = Math.min(ind.max, Math.max(ind.min, v));
-      return M.top + (1 - (clamped - ind.min) / range) * plotH;
-    };
+    // Y축 범위: 게이지의 고정 min~max가 아니라, 이 기간 실제 데이터의 최소~최대에
+    // 여유(15%)를 둔 값으로 자동 확대해서 변동폭이 잘 보이도록 한다.
+    const dataMin = Math.min(...points.map(p => p.v));
+    const dataMax = Math.max(...points.map(p => p.v));
+    const dataPad = (dataMax - dataMin) * 0.15 || Math.max(Math.abs(dataMax) * 0.1, 1);
+    const domainMin = dataMin - dataPad;
+    const domainMax = dataMax + dataPad;
+    const domainRange = domainMax - domainMin;
+
+    const valToY = v => M.top + (1 - (v - domainMin) / domainRange) * plotH;
     const idxToX = i => M.left + (i * plotW) / (points.length - 1);
 
+    // 안정/경계/위험 구간 밴드: 게이지와 같은 절대값 경계(min/zoneBoundaries/max)를
+    // 이 차트의 확대된 Y축 위치로 환산해서 그린다. 데이터 범위 밖으로 벗어난 밴드는
+    // svg viewBox 경계에서 자동으로 잘려 보인다.
+    const valueRange = ind.max - ind.min;
     const bands = computeZones(ind).map(z => {
-      const y = M.top + (1 - z.to / 100) * plotH;
-      const h = ((z.to - z.from) / 100) * plotH;
+      const vFrom = ind.min + (z.from / 100) * valueRange;
+      const vTo = ind.min + (z.to / 100) * valueRange;
+      const yTop = valToY(vTo);
+      const yBot = valToY(vFrom);
+      const y = Math.min(yTop, yBot);
+      const h = Math.abs(yBot - yTop);
       return `<rect x="${M.left}" y="${y.toFixed(1)}" width="${plotW}" height="${h.toFixed(1)}" fill="${ZONE_COLOR[z.cls]}" opacity="0.13"></rect>`;
     }).join('');
 
-    // Y축: 최댓값 / 중간값 / 최솟값 3개 눈금 + 단위, 중간값 위치에 옅은 기준선
-    const yTicks = [ind.max, (ind.max + ind.min) / 2, ind.min];
+    // Y축: 확대된 범위의 최댓값 / 중간값 / 최솟값 3개 눈금 + 단위, 중간값 위치에 옅은 기준선
+    const yTicks = [domainMax, (domainMax + domainMin) / 2, domainMin];
     const yAxis = yTicks.map((v, i) => {
       const y = valToY(v);
       const grid = i === 1
