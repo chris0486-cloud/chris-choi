@@ -483,17 +483,17 @@ const config = {
   meta: {
     title: "국면 판단 대시보드: 한눈에 보는 현재 위치",
     subtitle: "성장·물가 국면 매트릭스와 7개 핵심 지표의 위험 구간을 통해 현재 매크로 사이클 위치를 진단합니다.",
-    asOf: "2026.8 기준",
+    asOf: "2026.9 기준",
     org: "Macro Strategy Team",
     page: "1 / 1",
-    source: "출처: Trading Economics, BLS, S&P Global, FRED, Cboe, ICE · 2026.8 기준 · 구간 경계는 내부 운용 기준(안)"
+    source: "출처: Trading Economics, BLS, S&P Global, FRED, Cboe, ICE · 2026.9 기준 · 구간 경계는 내부 운용 기준(안)"
   },
 
   quadrant: {
     // 0~100 정규화 좌표계 (x: 물가 좌0→우100, y: 성장 아래0→위100)
     current: { x: 58, y: 35 },
     arrowTo: { x: 34, y: 60 },
-    caption: "현재(2026.8) 물가 정점 통과 → 봄·인컴 국면으로 이동 중"
+    caption: "현재(2026.9) 물가 정점 통과 → 봄·인컴 국면으로 이동 중"
   },
 
   indicators: [
@@ -505,7 +505,7 @@ const config = {
     },
     {
       label: "10Y-2Y 금리차",
-      min: -1.5, max: 2.0, value: 0.39, asOf: "2026-08-28", unit: "%p", direction: "asc",
+      min: -1.5, max: 2.0, value: 0.41, asOf: "2026-08-31", unit: "%p", direction: "asc",
       zoneBoundaries: [0, 0.5],
       history: [
       { d: "2016-08", v: 0.78 },
@@ -628,7 +628,7 @@ const config = {
       { d: "2026-05", v: 0.47 },
       { d: "2026-06", v: 0.3 },
       { d: "2026-07", v: 0.47 },
-      { d: "2026-08", v: 0.39 }
+      { d: "2026-08", v: 0.41 }
     ]
     },
     {
@@ -759,7 +759,7 @@ const config = {
     },
     {
       label: "美 10년 국채금리",
-      min: 2, max: 7, value: 4.67, asOf: "2026-08-27", unit: "%", direction: "desc",
+      min: 2, max: 7, value: 4.73, asOf: "2026-08-28", unit: "%", direction: "desc",
       zoneBoundaries: [4.0, 5.5],
       history: [
       { d: "2016-08", v: 1.58 },
@@ -882,12 +882,12 @@ const config = {
       { d: "2026-05", v: 4.45 },
       { d: "2026-06", v: 4.44 },
       { d: "2026-07", v: 4.75 },
-      { d: "2026-08", v: 4.67 }
+      { d: "2026-08", v: 4.73 }
     ]
     },
     {
       label: "하이일드 스프레드",
-      min: 2, max: 10, value: 2.63, asOf: "2026-08-27", unit: "%p", direction: "desc",
+      min: 2, max: 10, value: 2.6, asOf: "2026-08-28", unit: "%p", direction: "desc",
       zoneBoundaries: [4, 6],
       history: [
       { d: "2023-09", v: 4.03 },
@@ -925,12 +925,12 @@ const config = {
       { d: "2026-05", v: 2.74 },
       { d: "2026-06", v: 2.75 },
       { d: "2026-07", v: 2.85 },
-      { d: "2026-08", v: 2.63 }
+      { d: "2026-08", v: 2.6 }
     ]
     },
     {
       label: "VIX",
-      min: 10, max: 60, value: 14.51, asOf: "2026-08-27", unit: "", direction: "desc",
+      min: 10, max: 60, value: 14.43, asOf: "2026-08-28", unit: "", direction: "desc",
       zoneBoundaries: [20, 30],
       history: [
       { d: "2016-08", v: 13.42 },
@@ -1053,7 +1053,7 @@ const config = {
       { d: "2026-05", v: 15.32 },
       { d: "2026-06", v: 16.45 },
       { d: "2026-07", v: 15.99 },
-      { d: "2026-08", v: 14.51 }
+      { d: "2026-08", v: 14.43 }
     ]
     },
     {
